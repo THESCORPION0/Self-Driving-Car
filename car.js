@@ -11,11 +11,13 @@ class Car {
     this.friction = 0.05;     // the reduce of speed if no button is pressed
     this.angle = 0;           // Direction angle (in radians)
 
+    this.sensor = new Sensor(this);
     this.controls = new Controls();
   }
 
-  update() {
+  update(roadBorders) {
     this.#move();
+    this.sensor.update(roadBorders);
   }
 
   #move() {
@@ -77,5 +79,7 @@ class Car {
     ctx.fill();
 
     ctx.restore();               // We return the canvas to its normal position.
+
+    this.sensor.draw(ctx);
   }
 }
