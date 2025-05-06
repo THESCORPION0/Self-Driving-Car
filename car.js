@@ -1,5 +1,5 @@
 class Car {
-  constructor(x, y, width, height) {
+  constructor(x, y, width, height, controlType, maxSpeed = 3) {
     this.x = x;
     this.y = y;
     this.width = width;
@@ -7,27 +7,37 @@ class Car {
 
     this.speed = 0;           // initial speed
     this.acceleration = 0.2;  // the acceleration when the car move forward or backward
-    this.maxSpeed = 3;        // the limit of speed
+    this.maxSpeed = maxSpeed; // the limit of speed
     this.friction = 0.05;     // the reduce of speed if no button is pressed
     this.angle = 0;           // Direction angle (in radians)
     this.damaged = false;     // Damage intial value
 
-    this.sensor = new Sensor(this);
-    this.controls = new Controls();
+    if (controlType != "DUMMY") {
+      this.sensor = new Sensor(this);
+    }
+    this.controls = new Controls(controlType);
+    this.polygon = this.#createPolygon(); // Add this line
   }
 
-  update(roadBorders) {
+  update(roadBorders, traffic) {
     if (!this.damaged) {
       this.#move();
       this.polygon = this.#createPolygon();
-      this.damaged = this.#assessDamage(roadBorders);
+      this.damaged = this.#assessDamage(roadBorders, traffic);
     }
-    this.sensor.update(roadBorders);
+    if (this.sensor) {
+      this.sensor.update(roadBorders, traffic);
+    }
   }
 
-  #assessDamage(roadBorders) {
+  #assessDamage(roadBorders, traffic) {
     for (let index = 0; index < roadBorders.length; index++) {
       if (polyIntersect(this.polygon, roadBorders[index])) {
+        return true;
+      }
+    }
+    for (let j = 0; j < traffic.length; j++) {
+      if (polyIntersect(this.polygon, traffic[j].polygon)) {
         return true;
       }
     }
@@ -101,8 +111,8 @@ class Car {
     this.y -= Math.cos(this.angle) * this.speed;
   }
 
-  draw(ctx) {
-    ctx.fillStyle = this.damaged ? "gray" : "black";
+  draw(ctx, color) {
+    ctx.fillStyle = this.damaged ? "gray" : color;
     ctx.beginPath();
     ctx.moveTo(this.polygon[0].x, this.polygon[0].y);
     for (let index = 1; index < this.polygon.length; index++) {
@@ -110,6 +120,8 @@ class Car {
     }
     ctx.fill();
 
-    this.sensor.draw(ctx);
+    if (this.sensor) {
+      this.sensor.draw(ctx);
+    }
   }
 }
