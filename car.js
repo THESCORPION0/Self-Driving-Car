@@ -10,14 +10,51 @@ class Car {
     this.maxSpeed = 3;        // the limit of speed
     this.friction = 0.05;     // the reduce of speed if no button is pressed
     this.angle = 0;           // Direction angle (in radians)
+    this.damaged = false;     // Damage intial value
 
     this.sensor = new Sensor(this);
     this.controls = new Controls();
   }
 
   update(roadBorders) {
-    this.#move();
+    if (!this.damaged) {
+      this.#move();
+      this.polygon = this.#createPolygon();
+      this.damaged = this.#assessDamage(roadBorders);
+    }
     this.sensor.update(roadBorders);
+  }
+
+  #assessDamage(roadBorders) {
+    for (let index = 0; index < roadBorders.length; index++) {
+      if (polyIntersect(this.polygon, roadBorders[index])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  #createPolygon() {
+    const points = [];
+    const rad = Math.hypot(this.width, this.height) / 2;
+    const alpha = Math.atan2(this.width, this.height);
+    points.push({
+      x: this.x - Math.sin(this.angle - alpha) * rad,
+      y: this.y - Math.cos(this.angle - alpha) * rad
+    }); 
+    points.push({
+      x: this.x - Math.sin(this.angle + alpha) * rad,
+      y: this.y - Math.cos(this.angle + alpha) * rad
+    }); 
+    points.push({
+      x: this.x - Math.sin(Math.PI + this.angle - alpha) * rad,
+      y: this.y - Math.cos(Math.PI + this.angle - alpha) * rad
+    }); 
+    points.push({
+      x: this.x - Math.sin(Math.PI + this.angle + alpha) * rad,
+      y: this.y - Math.cos(Math.PI + this.angle + alpha) * rad
+    }); 
+    return points;
   }
 
   #move() {
@@ -48,7 +85,7 @@ class Car {
       this.speed = 0;
     }
 
-    // The main rotation 
+    // Steering
     if (this.speed != 0) {
       const flip = this.speed > 0 ? 1 : -1;
       if (this.controls.left) {
@@ -59,26 +96,19 @@ class Car {
       }
     }
 
-    // Update the place using the corner
+    // Update position    
     this.x -= Math.sin(this.angle) * this.speed;
     this.y -= Math.cos(this.angle) * this.speed;
   }
 
   draw(ctx) {
-    ctx.save();                    // Save the current position of the canvas
-    ctx.translate(this.x, this.y); // Move the origin to the Car position
-    ctx.rotate(-this.angle);       // Rotate the canvas to the Car angle
-
+    ctx.fillStyle = this.damaged ? "gray" : "black";
     ctx.beginPath();
-    ctx.rect(
-      - this.width / 2,
-      - this.height / 2,
-      this.width,
-      this.height
-    );
+    ctx.moveTo(this.polygon[0].x, this.polygon[0].y);
+    for (let index = 1; index < this.polygon.length; index++) {
+      ctx.lineTo(this.polygon[index].x, this.polygon[index].y);
+    }
     ctx.fill();
-
-    ctx.restore();               // We return the canvas to its normal position.
 
     this.sensor.draw(ctx);
   }
